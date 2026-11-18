@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать приглашение</title>
+    <!-- Подключаем библиотеку для сжатия ссылок -->
+    <script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
+    <style>
+        :root {
+            --primary: #e91e63;
+            --primary-light: #fce4ec;
+            --bg-panel: rgba(255, 255, 255, 0.95);
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #f0c0d0;
+            --envelope-body: #f48fb1;
+            --envelope-flap: #ec407a;
+            --card-bg: #ffffff;
+            --shadow: rgba(233, 30, 99, 0.2);
+            --app-bg: linear-gradient(135deg, #fdf2f8, #fce4ec);
+            --app-bg-image: none;
+        }
+
+        body[data-theme="romantic"] {
+            --primary: #e91e63;
+            --primary-light: #fce4ec;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #f8bbd0;
+            --envelope-body: #f48fb1;
+            --envelope-flap: #ec407a;
+            --card-bg: #ffffff;
+            --shadow: rgba(233, 30, 99, 0.2);
+            --app-bg: linear-gradient(135deg, #fdf2f8, #f8bbd0);
+        }
+
+        body[data-theme="sad"] {
+            --primary: #ad1457;
+            --primary-light: #f8bbd0;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --border-color: #424242;
+            --envelope-body: #2c2c2c;
+            --envelope-flap: #1f1f1f;
+            --card-bg: #3a3a3a;
+            --shadow: rgba(0, 0, 0, 0.6);
+            --app-bg: linear-gradient(to bottom, #7a8288 0%, #4a5054 40%, #2f3437 100%);
+        }
+        
+        body[data-theme="sad"] .preview-title,
+        body[data-theme="sad"] .preview-subtitle,
+        body[data-theme="sad"] .envelope-paper { color: #fce4ec; }
+        body[data-theme="sad"] .envelope-paper { background: rgba(44, 44, 44, 0.9); border: 1px solid #555; }
+
+        body[data-theme="anniversary"] {
+            --primary: #d32f2f;
+            --primary-light: #ffebee;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #ef9a9a;
+            --envelope-body: #e53935;
+            --envelope-flap: #b71c1c;
+            --card-bg: #ffffff;
+            --shadow: rgba(211, 47, 47, 0.25);
+            --app-bg: linear-gradient(135deg, #ffffff, #ffebee);
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+
+        body {
+            background: var(--app-bg);
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            transition: background 0.5s, color 0.5s;
+            position: relative;
+        }
+
+        body.custom-bg { background-image: var(--app-bg-image) !important; }
+        body.custom-bg::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.4); z-index: 0; pointer-events: none;
+        }
+
+        #creator-panel {
+            flex: 1; overflow-y: auto; padding: 40px;
+            background: var(--bg-panel); backdrop-filter: blur(10px);
+            border-right: 1px solid var(--border-color);
+            max-width: 620px; position: relative; z-index: 10;
+        }
+
+        h2 { margin-bottom: 24px; font-size: 22px; color: #333; }
+        .step-nav { display: flex; gap: 8px; margin-bottom: 30px; flex-wrap: wrap; }
+        .step-btn {
+            padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border-color);
+            background: #fff; color: #333; cursor: pointer; font-size: 14px; transition: 0.3s;
+        }
+        .step-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 8px; color: #444; }
+        .form-group input[type="text"], .form-group textarea {
+            width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 10px;
+            font-size: 15px; outline: none; transition: border 0.2s; background: #fff; color: #333;
+        }
+        .form-group input:focus, .form-group textarea:focus { border-color: var(--primary); }
+
+        .theme-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-bottom: 20px; }
+        .theme-card {
+            border: 2px solid transparent; border-radius: 12px; padding: 10px;
+            cursor: pointer; text-align: center; background: #fff; transition: 0.2s;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+        }
+        .theme-card.active { border-color: var(--primary); transform: scale(1.02); }
+        .theme-preview { width: 100%; height: 50px; border-radius: 8px; margin-bottom: 8px; display: flex; align-items: center; justify-content: center; font-size: 24px; }
+        .theme-name { font-size: 13px; font-weight: 600; color: #333; }
+
+        .sticker-grid { display: flex; gap: 10px; flex-wrap: wrap; }
+        .sticker-btn {
+            font-size: 24px; padding: 10px 14px; border-radius: 12px;
+            border: 2px solid #eee; background: #fff; cursor: pointer; transition: 0.2s;
+        }
+        .sticker-btn.active { border-color: var(--primary); background: var(--primary-light); }
+        .sticker-btn:hover { transform: scale(1.1); }
+
+        .sticker-animated { display: inline-block; animation: floatSticker 2.5s infinite ease-in-out; }
+        @keyframes floatSticker { 0%, 100% { transform: translateY(0) rotate(0deg); } 50% { transform: translateY(-8px) rotate(5deg); } }
+
+        .btn-next {
+            width: 100%; padding: 14px; background: var(--primary); color: #fff;
+            border: none; border-radius: 12px; font-size: 16px; font-weight: bold;
+            cursor: pointer; margin-top: 10px; transition: 0.2s; box-shadow: 0 4px 12px var(--shadow);
+        }
+        .btn-next:hover { filter: brightness(1.1); }
+
+        .option-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .option-row input { flex: 1; }
+        .btn-del { background: #ffebee; color: #d32f2f; border: none; padding: 8px 12px; border-radius: 8px; cursor: pointer; }
+        .btn-add { background: #e3f2fd; color: #1976d2; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-bottom: 10px; }
+
+        #preview-panel {
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            padding: 20px; position: relative; z-index: 10; perspective: 1000px;
+        }
+
+        .envelope-container { position: relative; width: 360px; height: 260px; cursor: pointer; transition: transform 0.4s; }
+        .envelope-container:hover { transform: translateY(-5px); }
+
+        .envelope {
+            position: relative; width: 100%; height: 100%;
+            background: var(--envelope-body); border-radius: 12px;
+            box-shadow: 0 20px 50px var(--shadow);
+        }
+
+        .envelope-paper {
+            position: absolute; top: 15px; bottom: 15px; left: 15px; right: 15px;
+            background: var(--card-bg); border-radius: 8px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            padding: 20px; text-align: center; z-index: 2;
+            transition: transform 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275), z-index 0s;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        .envelope-flap {
+            position: absolute; top: 0; left: 0; width: 0; height: 0;
+            border-left: 180px solid transparent; border-right: 180px solid transparent;
+            border-top: 130px solid var(--envelope-flap);
+            border-radius: 12px 12px 0 0; transform-origin: top;
+            transition: transform 0.6s ease-in-out, z-index 0s; z-index: 4;
+        }
+
+        .envelope-front {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--envelope-body); border-radius: 12px;
+            clip-path: polygon(0 0, 50% 45%, 100% 0, 100% 100%, 0 100%);
+            z-index: 3; pointer-events: none; box-shadow: inset 0 -10px 20px rgba(0,0,0,0.1);
+        }
+
+        .envelope.open .envelope-flap { transform: rotateX(180deg); z-index: 1; }
+        .envelope.open .envelope-paper { transform: translateY(-80px); z-index: 5; }
+
+        .preview-sticker { font-size: 48px; margin-bottom: 12px; animation: floatSticker 2.5s infinite ease-in-out; }
+        .preview-title { font-size: 18px; font-weight: 700; color: var(--text-main); margin-bottom: 6px; line-height: 1.3; }
+        .preview-subtitle { font-size: 13px; color: var(--text-muted); line-height: 1.4; }
+        .preview-buttons { display: flex; gap: 10px; margin-top: 16px; }
+        .preview-btn { padding: 8px 20px; border-radius: 20px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+        .preview-btn.yes { background: #4caf50; color: #fff; }
+        .preview-btn.no { background: #eee; color: #888; }
+
+        .hidden { display: none !important; }
+        .link-box { margin-top: 20px; padding: 15px; background: #e8f5e9; border-radius: 8px; border: 1px solid #c8e6c9; word-break: break-all; font-size: 13px; color: #333; }
+        .link-box strong { display: block; margin-bottom: 6px; }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        .run-away { position: fixed !important; z-index: 9999; transition: 0.2s; }
+
+        .file-upload-wrapper { position: relative; overflow: hidden; display: inline-block; width: 100%; }
+        .file-upload-wrapper input[type=file] { font-size: 100px; position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; }
+        .file-upload-btn {
+            border: 2px dashed var(--border-color); background: var(--primary-light);
+            color: var(--primary); padding: 12px; text-align: center; border-radius: 10px;
+            font-weight: 600; cursor: pointer; transition: 0.2s;
+        }
+        .file-upload-btn:hover { background: #fff; }
+    </style>
+</head>
+<body data-theme="romantic">
+
+    <div id="creator-panel">
+        <h2>Настройка открытки</h2>
+        
+        <div class="step-nav" id="step-nav">
+            <button class="step-btn active" data-step="1">1. Тема и текст</button>
+            <button class="step-btn" data-step="2">2. Когда</button>
+            <button class="step-btn" data-step="3">3. Куда</button>
+            <button class="step-btn" data-step="4">4. Финал</button>
+        </div>
+
+        <div id="creator-step-1">
+            <div class="form-group">
+                <label>Выберите настроение</label>
+                <div class="theme-grid" id="theme-grid">
+                    <div class="theme-card active" data-theme-name="romantic">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #fce4ec, #f48fb1);">🌸</div>
+                        <div class="theme-name">Розовая роза</div>
+                    </div>
+                    <div class="theme-card" data-theme-name="sad">
+                        <div class="theme-preview" style="background: linear-gradient(to bottom, #7a8288, #2f3437);">🌧️</div>
+                        <div class="theme-name">Дождливый кот</div>
+                    </div>
+                    <div class="theme-card" data-theme-name="anniversary">
+                        <div class="theme-preview" style="background: linear-gradient(135deg, #ffffff, #e53935);">🎂</div>
+                        <div class="theme-name">Годовщина</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Свой фон (не более 1 МБ)</label>
+                <div class="file-upload-wrapper">
+                    <div class="file-upload-btn" id="upload-bg-text">📸 Загрузить картинку</div>
+                    <input type="file" id="bg-upload" accept="image/*" onchange="handleBgUpload(event)">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Заголовок на конверте</label>
+                <input type="text" id="inp-title" value="Есть план на вечер. Ты в деле?" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Подзаголовок</label>
+                <input type="text" id="inp-subtitle" value="Никаких скучных «давай встретимся» — только ты, я и хороший момент" oninput="updatePreview()">
+            </div>
+            
+            <div class="form-group">
+                <label>Стикер</label>
+                <div class="sticker-grid" id="sticker-grid">
+                    <button class="sticker-btn active" onclick="setSticker('💌')"><span class="sticker-animated">💌</span></button>
+                    <button class="sticker-btn" onclick="setSticker('❤️')"><span class="sticker-animated">❤️</span></button>
+                    <button class="sticker-btn" onclick="setSticker('🌸')"><span class="sticker-animated">🌸</span></button>
+                    <button class="sticker-btn" onclick="setSticker('🥺')"><span class="sticker-animated">🥺</span></button>
+                    <button class="sticker-btn" onclick="setSticker('😿')"><span class="sticker-animated">😿</span></button>
+                    <button class="sticker-btn" onclick="setSticker('🌧️')"><span class="sticker-animated">🌧️</span></button>
+                    <button class="sticker-btn" onclick="setSticker('☁️')"><span class="sticker-animated">☁️</span></button>
+                    <button class="sticker-btn" onclick="setSticker('🎂')"><span class="sticker-animated">🎂</span></button>
+                </div>
+            </div>
+
+            <button class="btn-next" onclick="goToStep(2)">Далее →</button>
+        </div>
+
+        <div id="creator-step-2" class="hidden">
+            <div class="form-group">
+                <label>Заголовок экрана с датой</label>
+                <input type="text" id="inp-date-title" value="Когда тебе удобнее?" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Варианты дат</label>
+                <div id="date-options-list">
+                    <div class="option-row"><input type="text" value="Сегодня" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                    <div class="option-row"><input type="text" value="Завтра" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                    <div class="option-row"><input type="text" value="В эти выходные" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                </div>
+                <button class="btn-add" onclick="addDateOption()">+ Добавить вариант</button>
+            </div>
+            <button class="btn-next" onclick="goToStep(3)">Далее →</button>
+        </div>
+
+        <div id="creator-step-3" class="hidden">
+            <div class="form-group">
+                <label>Заголовок экрана с местом</label>
+                <input type="text" id="inp-place-title" value="Куда пойдём?" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Варианты мест</label>
+                <div id="place-options-list">
+                    <div class="option-row"><input type="text" value="Уютное кафе ☕" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                    <div class="option-row"><input type="text" value="Прогулка в парке 🌳" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                    <div class="option-row"><input type="text" value="Кино 🎬" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button></div>
+                </div>
+                <button class="btn-add" onclick="addPlaceOption()">+ Добавить место</button>
+            </div>
+            <button class="btn-next" onclick="goToStep(4)">Далее →</button>
+        </div>
+
+        <div id="creator-step-4" class="hidden">
+            <div class="form-group">
+                <label>Заголовок финала</label>
+                <input type="text" id="inp-final-title" value="Договорились!" oninput="updatePreview()">
+            </div>
+            <div class="form-group">
+                <label>Текст финала</label>
+                <textarea id="inp-final-text" rows="3" oninput="updatePreview()">Уже жду. Обещаю не опаздывать.</textarea>
+            </div>
+            <button class="btn-next" style="background: #4caf50;" onclick="generateLink()">Получить ссылку для партнёра</button>
+            <div id="link-result" class="link-box hidden">
+                <strong>✅ Ссылка готова!</strong>
+                <span id="generated-url"></span><br><br>
+                <button onclick="copyLink()" style="padding:8px 12px; cursor:pointer; border-radius:6px; border:1px solid #ccc;">Скопировать</button>
+                
+                <div style="margin-top: 10px; font-size: 12px; color: #555; border-top: 1px dashed #ccc; padding-top: 10px;">
+                    <strong>💡 Как сделать ссылку красивее (for-my-love):</strong><br>
+                    Если вы выложили файл на GitHub Pages, создайте папку <code>for-my-love</code> и положите туда файл <code>index.html</code>. Тогда ваша ссылка будет вида <code>vash-login.github.io/for-my-love</code>.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="preview-panel">
+        <div class="envelope-container" id="envelope-container" onclick="toggleEnvelope()">
+            <div class="envelope" id="main-envelope">
+                <div class="envelope-paper" id="envelope-paper">
+                    <div class="preview-sticker" id="preview-sticker">💌</div>
+                    <div class="preview-title" id="preview-title">Есть план на вечер. Ты в деле?</div>
+                    <div class="preview-subtitle" id="preview-subtitle">Никаких скучных «давай встретимся»...</div>
+                    <div class="preview-buttons">
+                        <button class="preview-btn yes">Да</button>
+                        <button class="preview-btn no">Нет</button>
+                    </div>
+                </div>
+                <div class="envelope-front"></div>
+                <div class="envelope-flap"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let state = {
+            theme: 'romantic', customBg: null,
+            title: 'Есть план на вечер. Ты в деле?',
+            subtitle: 'Никаких скучных «давай встретимся» — только ты, я и хороший момент',
+            sticker: '💌', dateTitle: 'Когда тебе удобнее?',
+            dateOptions: ['Сегодня', 'Завтра', 'В эти выходные'],
+            placeTitle: 'Куда пойдём?',
+            placeOptions: ['Уютное кафе ☕', 'Прогулка в парке 🌳', 'Кино 🎬'],
+            finalTitle: 'Договорились!', finalText: 'Уже жду. Обещаю не опаздывать.'
+        };
+
+        // Проверяем, есть ли данные в ссылке
+        const urlParams = new URLSearchParams(window.location.search);
+        let dataStr = urlParams.get('data');
+        
+        if (dataStr) {
+            try {
+                // РАСПАКОВКА СЖАТОЙ ССЫЛКИ
+                const decompressed = LZString.decompressFromEncodedURIComponent(dataStr);
+                if (decompressed) {
+                    const decoded = JSON.parse(decompressed);
+                    state = { ...state, ...decoded };
+                    
+                    document.getElementById('creator-panel').classList.add('hidden');
+                    document.getElementById('preview-panel').style.padding = '0';
+                    
+                    applyTheme(state.theme);
+                    if (state.customBg) {
+                        document.body.style.setProperty('--app-bg-image', `url(${state.customBg})`);
+                        document.body.classList.add('custom-bg');
+                    }
+                    startGuestExperience();
+                } else {
+                    throw new Error("Decompression failed");
+                }
+            } catch(e) {
+                alert('Ошибка в ссылке! Возможно, она скопировалась не полностью.');
+                document.body.innerHTML = '<div style="text-align:center; padding:50px; font-family:sans-serif;"><h1>Ошибка ссылки</h1><p>Попросите отправителя скопировать ссылку еще раз.</p></div>';
+            }
+        } else {
+            updatePreview();
+        }
+
+        function handleBgUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 1024 * 1024) {
+                    alert('Файл слишком большой! Выберите картинку до 1 МБ, иначе ссылка будет огромной.');
+                    return;
+                }
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    state.customBg = e.target.result;
+                    document.body.style.setProperty('--app-bg-image', `url(${state.customBg})`);
+                    document.body.classList.add('custom-bg');
+                    document.getElementById('upload-bg-text').textContent = '✅ Фон загружен';
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        document.getElementById('theme-grid').addEventListener('click', (e) => {
+            const card = e.target.closest('.theme-card');
+            if (!card) return;
+            document.querySelectorAll('.theme-card').forEach(c => c.classList.remove('active'));
+            card.classList.add('active');
+            state.theme = card.dataset.themeName;
+            
+            state.customBg = null;
+            document.body.classList.remove('custom-bg');
+            document.getElementById('upload-bg-text').textContent = '📸 Загрузить картинку (не более 1 МБ)';
+            
+            applyTheme(state.theme);
+            updatePreview();
+        });
+
+        function applyTheme(themeName) { document.body.dataset.theme = themeName; }
+
+        function setSticker(emoji) {
+            state.sticker = emoji;
+            document.querySelectorAll('.sticker-btn').forEach(b => b.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            updatePreview();
+        }
+
+        function goToStep(step) {
+            document.querySelectorAll('.step-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.step-btn[data-step="${step}"]`).classList.add('active');
+            for(let i=1; i<=4; i++) {
+                const el = document.getElementById(`creator-step-${i}`);
+                if (i === step) el.classList.remove('hidden');
+                else el.classList.add('hidden');
+            }
+            updatePreview();
+        }
+
+        document.getElementById('step-nav').addEventListener('click', (e) => {
+            const btn = e.target.closest('.step-btn');
+            if (btn) goToStep(parseInt(btn.dataset.step));
+        });
+
+        function addDateOption() {
+            const div = document.createElement('div');
+            div.className = 'option-row';
+            div.innerHTML = `<input type="text" value="Новый вариант" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button>`;
+            document.getElementById('date-options-list').appendChild(div);
+            updatePreview();
+        }
+
+        function addPlaceOption() {
+            const div = document.createElement('div');
+            div.className = 'option-row';
+            div.innerHTML = `<input type="text" value="Новое место" oninput="updatePreview()"><button class="btn-del" onclick="this.parentElement.remove(); updatePreview()">✕</button>`;
+            document.getElementById('place-options-list').appendChild(div);
+            updatePreview();
+        }
+
+        function updatePreview() {
+            state.title = document.getElementById('inp-title').value;
+            state.subtitle = document.getElementById('inp-subtitle').value;
+            state.dateTitle = document.getElementById('inp-date-title').value;
+            state.dateOptions = Array.from(document.querySelectorAll('#date-options-list input')).map(i => i.value).filter(v => v);
+            state.placeTitle = document.getElementById('inp-place-title').value;
+            state.placeOptions = Array.from(document.querySelectorAll('#place-options-list input')).map(i => i.value).filter(v => v);
+            state.finalTitle = document.getElementById('inp-final-title').value;
+            state.finalText = document.getElementById('inp-final-text').value;
+
+            const stickerEl = document.getElementById('preview-sticker');
+            if (stickerEl) {
+                stickerEl.textContent = state.sticker;
+                stickerEl.style.animation = 'none';
+                stickerEl.offsetHeight;
+                stickerEl.style.animation = 'floatSticker 2.5s infinite ease-in-out';
+            }
+
+            const titleEl = document.getElementById('preview-title');
+            const subtitleEl = document.getElementById('preview-subtitle');
+            if (titleEl) titleEl.textContent = state.title || '...';
+            if (subtitleEl) subtitleEl.textContent = state.subtitle || '...';
+        }
+
+        function toggleEnvelope() {
+            const env = document.getElementById('main-envelope');
+            if(env) env.classList.toggle('open');
+        }
+
+        function generateLink() {
+            // СЖАТИЕ ДАННЫХ
+            const jsonStr = JSON.stringify(state);
+            const compressed = LZString.compressToEncodedURIComponent(jsonStr);
+            
+            const baseUrl = window.location.href.split('?')[0];
+            const finalUrl = `${baseUrl}?data=${compressed}`;
+            
+            document.getElementById('generated-url').textContent = finalUrl;
+            document.getElementById('link-result').classList.remove('hidden');
+        }
+
+        function copyLink() {
+            const url = document.getElementById('generated-url').textContent;
+            navigator.clipboard.writeText(url).then(() => alert('Ссылка скопирована!'));
+        }
+
+        function startGuestExperience() {
+            const panel = document.getElementById('preview-panel');
+            panel.style.width = '100%';
+            panel.style.flexDirection = 'column';
+
+            panel.innerHTML = `
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="font-size: 20px; font-weight: bold; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5);">У тебя новое письмо!</div>
+                </div>
+                <div class="envelope-container" id="guest-envelope" style="width: 380px; height: 270px; perspective: 1000px;">
+                    <div class="envelope">
+                        <div class="envelope-paper" style="justify-content: center; align-items: center;">
+                            <div style="font-size: 50px; margin-bottom: 10px;">💌</div>
+                            <div style="font-size: 16px; color: var(--text-muted);">Нажми, чтобы открыть</div>
+                        </div>
+                        <div class="envelope-front"></div>
+                        <div class="envelope-flap"></div>
+                    </div>
+                </div>
+                <div style="margin-top: 40px; display: flex; gap: 20px;">
+                    <button class="btn-next" style="width: auto; padding: 12px 40px;" onclick="openGuestEnvelope()">Открыть</button>
+                    <button class="btn-next" style="width: auto; padding: 12px 40px; background: #ccc; color: #333;" id="btn-no-env" onclick="runAway(this)">Не открывать</button>
+                </div>
+            `;
+            
+            document.getElementById('guest-envelope').addEventListener('click', openGuestEnvelope);
+            setupNoButton('btn-no-env');
+        }
+
+        function openGuestEnvelope() {
+            const env = document.querySelector('#guest-envelope .envelope');
+            env.classList.add('open');
+            const actions = document.querySelector('#preview-panel > div:last-child');
+            if(actions) actions.style.display = 'none';
+            setTimeout(() => { renderGuestStep1(); }, 1200);
+        }
+
+        function renderGuestStep1() {
+            const panel = document.getElementById('preview-panel');
+            panel.innerHTML = `
+                <div class="envelope-paper" style="position: relative; width: 400px; height: 300px; transform: none; z-index: 10; animation: fadeIn 0.5s; background: var(--card-bg);">
+                    <div class="preview-sticker">${state.sticker}</div>
+                    <div class="preview-title">${state.title}</div>
+                    <div class="preview-subtitle">${state.subtitle}</div>
+                    <div class="preview-buttons" style="margin-top: 20px;">
+                        <button class="preview-btn yes" onclick="renderGuestStep2()">Да</button>
+                        <button class="preview-btn no" id="btn-no-q" onclick="runAway(this)">Нет</button>
+                    </div>
+                </div>
+            `;
+            setupNoButton('btn-no-q');
+        }
+
+        function renderGuestStep2() {
+            const panel = document.getElementById('preview-panel');
+            panel.innerHTML = `<div class="envelope-paper" style="position: relative; width: 400px; height: auto; min-height: 300px; transform: none; z-index: 10; animation: fadeIn 0.5s; background: var(--card-bg);">
+                <div class="preview-sticker">📅</div>
+                <div class="preview-title">${state.dateTitle}</div>
+                <div style="width:100%; margin-top:20px; display: flex; flex-direction: column; gap: 10px;">
+                    ${state.dateOptions.map(opt => `
+                        <div style="padding:12px; background:rgba(255,255,255,0.1); border-radius:10px; border:2px solid var(--border-color); cursor:pointer; transition:0.2s; color: var(--text-main);" 
+                             onclick="this.style.borderColor='var(--primary)'; state.chosenDate='${opt}'; setTimeout(renderGuestStep3, 400)">
+                            ${opt}
+                        </div>
+                    `).join('')}
+                </div>
+            </div>`;
+        }
+
+        function renderGuestStep3() {
+            const panel = document.getElementById('preview-panel');
+            state.chosenPlaces = [];
+            panel.innerHTML = `<div class="envelope-paper" style="position: relative; width: 400px; height: auto; min-height: 300px; transform: none; z-index: 10; animation: fadeIn 0.5s; background: var(--card-bg);">
+                <div class="preview-sticker">📍</div>
+                <div class="preview-title">${state.placeTitle}</div>
+                <div style="width:100%; margin-top:20px; display: flex; flex-direction: column; gap: 10px;" id="guest-places-container">
+                    ${state.placeOptions.map((opt, i) => `
+                        <div class="guest-place-btn" style="padding:12px; background:rgba(255,255,255,0.1); border-radius:10px; border:2px solid var(--border-color); cursor:pointer; transition:0.2s; color: var(--text-main);" 
+                             data-opt="${opt}">
+                            ${opt}
+                        </div>
+                    `).join('')}
+                </div>
+                <button id="btn-places-next" class="btn-next" style="margin-top: 20px; opacity:0.5; pointer-events:none;" onclick="renderGuestStep4()">Дальше</button>
+            </div>`;
+
+            document.querySelectorAll('.guest-place-btn').forEach(btn => {
+                btn.onclick = () => {
+                    if (btn.style.borderColor === 'var(--primary)') {
+                        btn.style.borderColor = 'var(--border-color)';
+                        state.chosenPlaces = state.chosenPlaces.filter(p => p !== btn.dataset.opt);
+                    } else {
+                        btn.style.borderColor = 'var(--primary)';
+                        state.chosenPlaces.push(btn.dataset.opt);
+                    }
+                    const nextBtn = document.getElementById('btn-places-next');
+                    if(state.chosenPlaces.length > 0) {
+                        nextBtn.style.opacity = '1';
+                        nextBtn.style.pointerEvents = 'auto';
+                    } else {
+                        nextBtn.style.opacity = '0.5';
+                        nextBtn.style.pointerEvents = 'none';
+                    }
+                };
+            });
+        }
+
+        function renderGuestStep4() {
+            const panel = document.getElementById('preview-panel');
+            panel.innerHTML = `<div class="envelope-paper" style="position: relative; width: 400px; height: auto; min-height: 300px; transform: none; z-index: 10; animation: fadeIn 0.5s; background: var(--card-bg);">
+                <div class="preview-sticker" style="font-size: 60px;">🎉</div>
+                <div class="preview-title" style="font-size: 24px;">${state.finalTitle}</div>
+                <div class="preview-subtitle" style="margin-top: 10px;">${state.finalText}</div>
+                <div style="margin-top:20px; padding:15px; background:rgba(255,255,255,0.1); border-radius:15px; width:100%; text-align:left; font-size:14px; color: var(--text-main);">
+                    <div style="margin-bottom:8px;"><strong>Когда:</strong> ${state.chosenDate}</div>
+                    <div><strong>Куда:</strong> ${state.chosenPlaces.join(', ')}</div>
+                </div>
+                <div class="preview-sticker" style="margin-top:20px;">❤️</div>
+            </div>`;
+        }
+
+        const noQuestions = ['Точно нет?', 'Хорошо подумал(а)?', 'Точно-точно?', 'Уверен(а)?', 'Последний шанс!'];
+        let noClickCount = 0;
+
+        function setupNoButton(btnId) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            let isDodging = false;
+
+            btn.addEventListener('mouseenter', () => {
+                if (noClickCount < noQuestions.length) {
+                    isDodging = true;
+                    btn.classList.add('run-away');
+                    moveButton(btn);
+                }
+            });
+
+            btn.addEventListener('touchstart', (e) => {
+                if (noClickCount < noQuestions.length) {
+                    e.preventDefault();
+                    isDodging = true;
+                    btn.classList.add('run-away');
+                    moveButton(btn);
+                }
+            });
+
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (noClickCount < noQuestions.length) {
+                    btn.textContent = noQuestions[noClickCount];
+                    noClickCount++;
+                    if (isDodging) moveButton(btn);
+                } else {
+                    btn.style.opacity = '0';
+                    setTimeout(() => btn.style.display = 'none', 500);
+                }
+            });
+        }
+
+        function moveButton(btn) {
+            const padding = 20;
+            const maxX = window.innerWidth - btn.offsetWidth - padding;
+            const maxY = window.innerHeight - btn.offsetHeight - padding;
+            const x = Math.max(padding, Math.random() * maxX);
+            const y = Math.max(padding, Math.random() * maxY);
+            btn.style.left = `${x}px`;
+            btn.style.top = `${y}px`;
+        }
+
+        applyTheme('romantic');
+    </script>
+</body>
+</html>
